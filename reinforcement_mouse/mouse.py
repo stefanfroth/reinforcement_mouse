@@ -3,9 +3,13 @@ The module mouse defines a mouse that learns to eat cheese via reinforcement
 learning.
 '''
 
+## Next to-dos: - Implement updated action,
+#               - Implement discount factor
+
+
 import pandas as pd
 import numpy as np
-import time
+from collections import defaultdict
 
 
 class Mouse:
@@ -29,16 +33,16 @@ class Mouse:
         self.states = states
 
         # All possible actions
-        self.actions = [0, 1, 2, 3] #up, right, down, left
-        self.action_mapping = {
-                                0: 'up',
-                                1: 'right',
-                                2: 'left',
-                                3: 'down'
-                                }
+        self.actions = ['up', 'right', 'left', 'down']
+        # self.action_mapping = {
+        #                         0: 'up',
+        #                         1: 'right',
+        #                         2: 'left',
+        #                         3: 'down'
+        #                         }
 
         # Save last action
-        self.action = 0
+        self.action = ''
 
         # Mapping between actions and states
         self.transition = pd.DataFrame([
@@ -65,45 +69,149 @@ class Mouse:
                               columns=['up', 'right', 'left', 'down'],
                               index=self.states)
 
-        # Create the state-value function
-        self.sv = pd.DataFrame(np.zeros(3,3))
+        # Create helper function for the calculation of the state-values
+        # It is called state reward
+        self.state_reward = {1: 0,
+                             2: 0,
+                             3: 0,
+                             4: 0,
+                             5: 0,
+                             6: 0,
+                             7: 0,
+                             8: 0,
+                             9: 0,
+                            }
+
+        # In how many episodes does the state occur?
+        self.state_occurence = {1: 0,
+                                2: 0,
+                                3: 0,
+                                4: 0,
+                                5: 0,
+                                6: 0,
+                                7: 0,
+                                8: 0,
+                                9: 0,
+                                }
+
+        # Create the state-value function (first as a dictionary, for rendering
+        # as a matrix)
+        self.state_value = {1: 0,
+                            2: 0,
+                            3: 0,
+                            4: 0,
+                            5: 0,
+                            6: 0,
+                            7: 0,
+                            8: 0,
+                            9: 0,
+                            }
 
         # Learning Rate
         self.learning_rate = 0.5
 
+        # Episode; start with 1
+        self.episode = 1
 
-    def find_best_state(self):
+        # Save the visited states
+        self.state_history = defaultdict(list)
+
+
+    # def find_best_state(self):
 
 
     def choose_action(self):
         '''
-        The method chose_action determines the next state of the mouse.
+        Determines the next state of the mouse.
         '''
         self.last_state = self.state
-        self.action = np.random.choice(self.actions,
-                                      p=self.policy.loc[self.state].values)
-        self.state = self.transition.loc[self.last_state, self.action_mapping[self.action]]
+
+        # Implement exploration/exploitation
+        # epsilon = np.random.randint(1, 100)/100+self.episode
+        epsilon = 0.1
+
+        '''With probability epsilon, choose randomly, else the best'''
+        if epsilon > 0.9 or self.episode < 4:
+            self.action = np.random.choice(self.actions,
+                                          p=self.policy.loc[self.state].values)
+        else:
+            best_action = []
+            value_best = -1000
+            for action in self.actions:
+                action_value = self.state_value[self.transition.loc[self.state, action]]
+                if action_value > value_best:
+                    best_action = [action]
+                    value_best = action_value
+                elif action_value == value_best:
+                    best_action.append(action)
+            print(f'The actions are {self.actions}')
+            print(f'The state_values are {[self.state_value[self.transition.loc[self.state, action]] for action in self.actions]}')
+            print(f'The best possible actions are {best_action}')
+
+            # If the best_action is unique
+            self.action = np.random.choice(best_action)
+
+        # Save the new state
+        self.state = self.transition.loc[self.last_state, self.action]
+
+        # Save the new state in the state history
+        self.state_history[self.episode].append(self.state)
+
+    def increase_state_reward_occurence(self, reward):
+        '''
+        Increases the state_reward used to calculate the state_value.
+        '''
+        for state in self.states:
+            if state in self.state_history[self.episode]:
+                self.state_reward[state] += reward
+                self.state_occurence[state] += 1
 
     def assign_reward(self):
         '''
-        The method assign_reward assigns a reward to the mouse given the action
-        it chose.
+        Assigns a reward to the mouse given its chosen action.
         '''
         if self.state == 1:
             self.last_reward = 1
             self.reward += 1
+
+            # Increase the state_reward
+            self.increase_state_reward_occurence(self.reward)
+
         elif self.state == 9:
             self.last_reward = 2
             self.reward += 2
-        else:
-            self.last_reward = 0
 
-    def update_values(self):
+            # Increase the state reward
+            self.increase_state_reward_occurence(self.reward)
+
+        else:
+            self.last_reward = -1
+            self.reward -= 1
+
+    def update_q(self):
         '''
-        The method update_values updates the value function of the mouse.
+        Updates the action_value (Q-)function of the mouse.
         '''
-        self.q.loc[self.last_state, self.action_mapping[self.action]] = \
-            self.q.loc[self.last_state, self.action_mapping[self.action]] + \
+        self.q.loc[self.last_state, self.action] = \
+            self.q.loc[self.last_state, self.action] + \
             self.learning_rate * (self.last_reward - \
-            self.q.loc[self.last_state, self.action_mapping[self.action]]) +\
+            self.q.loc[self.last_state, self.action]) +\
             sum(self.q.loc[self.state])/4
+
+    def update_state_values(self):
+        '''
+        Updates the values of the state_value function.
+        '''
+        # This code is specifically written for a Monte Carlo implementation
+        combined_list = []
+        for values in self.state_history.values():
+            combined_list.extend(set(values))
+
+        # Update (v_{t-1} + alpha * (v_t - v_{t-1}))
+        for state in self.states:
+            if self.state_occurence[state] > 0:
+                average_reward = self.state_reward[state]/self.state_occurence[state]
+
+                # Distinction betweent positive and negative values
+                self.state_value[state] = self.state_value[state] + self.learning_rate * \
+                                          (average_reward - self.state_value[state])

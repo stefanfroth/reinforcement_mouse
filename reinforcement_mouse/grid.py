@@ -13,10 +13,10 @@ class Grid:
     '''
 
     # Background image of the grid whith the cheese
-    image = cv2.imread('./images/mouse_grid.png')
+    image = cv2.imread('../images/mouse_grid.png')
     # cheese = cv2.imread('./images/cheese.svg')
     # double_cheese = cv2.imread('./images/cheese.svg')
-    mouse_image = cv2.imread('./images/mouse.png')
+    mouse_image = cv2.imread('../images/mouse.png')
 
 
     def __init__(self, mouse, size=9):
