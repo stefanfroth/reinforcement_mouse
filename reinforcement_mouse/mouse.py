@@ -18,14 +18,16 @@ class Mouse:
 
     Parameters:
     -----------
-    states:            states the mouse can be in, depends on the grid
-    starting_position: in which position does the mouse start
+    states:            States the mouse can be in, depends on the grid
+    starting_position: In which position does the mouse start
     exploration:       True means the mouse is exploring, False means it is not
-    discount_factor:   the discount factor of the game
+    discount_factor:   The discount factor of the game
+    learning_rate:     Learning rate at which the value is updated
     '''
 
+    # Take exploration out of the simple mouse
     def __init__(self, states=list(range(1, 10)), starting_position=5,
-                 exploration=False, discount_factor=0.8):
+                 exploration=False, discount_factor=0.8, learning_rate=0.5):
 
         # All possible states
         self.states = states
@@ -56,6 +58,7 @@ class Mouse:
                             }
 
         # Reward Function {state: reward}
+        # Should this be an attribute of the grid in comparison with the states
         self.reward_function = {
                                 1: 1,
                                 2: 0,
@@ -80,14 +83,17 @@ class Mouse:
         # Episode; start with 1
         self.episode = 1
 
-        # Wether to explore or just to exploit
-        self.exploration = exploration
-
         # Discount factor
         self.discount_factor = discount_factor
 
         # Timestep t
-        self.timestep
+        self.timestep = 0
+
+        # Wether to explore or just to exploit
+        self.exploration = exploration
+
+        # Learning Rate
+        self.learning_rate = learning_rate
 
         ### Cutoff: The rest of the __init__ function belongs to subclasses
 
@@ -96,49 +102,7 @@ class Mouse:
                               columns=['up', 'right', 'left', 'down'],
                               index=self.states)
 
-        # Create helper function for the calculation of the state-values
-        # It is called state reward
-        self.state_reward = {1: 0,
-                             2: 0,
-                             3: 0,
-                             4: 0,
-                             5: 0,
-                             6: 0,
-                             7: 0,
-                             8: 0,
-                             9: 0,
-                            }
 
-        # In how many episodes does the state occur?
-        self.state_occurence = {1: 0,
-                                2: 0,
-                                3: 0,
-                                4: 0,
-                                5: 0,
-                                6: 0,
-                                7: 0,
-                                8: 0,
-                                9: 0,
-                                }
-
-        # Create the state-value function (first as a dictionary, for rendering
-        # as a matrix)
-        self.state_value = {1: 0,
-                            2: 0,
-                            3: 0,
-                            4: 0,
-                            5: 0,
-                            6: 0,
-                            7: 0,
-                            8: 0,
-                            9: 0,
-                            }
-
-        # Learning Rate
-        self.learning_rate = 0.5
-
-        # Save the visited states
-        self.state_history = defaultdict(list)
 
 
     def choose_action(self):
@@ -180,17 +144,6 @@ class Mouse:
         # Save the new state
         self.state = self.transition[self.last_state][self.action]
 
-        # Save the new state in the state history
-        self.state_history[self.episode].append(self.state)
-
-    def increase_state_reward_occurence(self, reward):
-        '''
-        Increases the state_reward used to calculate the state_value.
-        '''
-        for state in self.states:
-            if state in self.state_history[self.episode]:
-                self.state_reward[state] += reward
-                self.state_occurence[state] += 1
 
     def assign_reward(self):
         '''
@@ -216,57 +169,140 @@ class Mouse:
         #     self.last_reward = -1
         #     self.reward -= 1
 
-        if self.state in [1, 9]:
-            self.increase_state_reward_occurence(self.reward)
+        # if self.state in [1, 9]:
+        #     self.increase_state_reward_occurence(self.reward)
 
-    ### The following methods are only needed for the subclasses
+    def play_one_round(self):
+        self.choose_action()
+        self.assign_reward()
 
-    def update_q(self):
+
+class PolicyIterationMouse(Mouse):
+    ...
+
+class ValueIterationMouse(Mouse):
+    ...
+
+class FirstVisitStateValueMonteCarloMouse(Mouse):
         '''
-        Updates the action_value (Q-)function of the mouse.
+        Implements the first visit monte carlo method of learning the state
+        value function.
+
+        Parameters:
+        -----------
+        states:            States the mouse can be in, depends on the grid
+        starting_position: In which position does the mouse start
+        exploration:       True means the mouse is exploring, False means it is not
+        discount_factor:   The discount factor of the game
+        learning_rate:     Learning rate at which the value is updated
         '''
-        self.q.loc[self.last_state, self.action] = \
-            self.q.loc[self.last_state, self.action] + \
-            self.learning_rate * (self.last_reward - \
-            self.q.loc[self.last_state, self.action]) +\
-            sum(self.q.loc[self.state])/4
+        def __init__(self):
+            super().__init__(states=list(range(1, 10)), starting_position=5,
+                         exploration=False, discount_factor=0.8,
+                         learning_rate=0.5)
 
-    def update_state_values(self):
-        '''
-        Updates the values of the state_value function.
-        '''
-        # This code is specifically written for a Monte Carlo implementation
-        ## The combined list is not used, therefore commented out for now
-        # combined_list = []
-        # for values in self.state_history.values():
-        #     combined_list.extend(set(values))
+            # Create helper function for the calculation of the state-values
+            # It is called state reward
+            self.state_reward = {1: 0,
+                                 2: 0,
+                                 3: 0,
+                                 4: 0,
+                                 5: 0,
+                                 6: 0,
+                                 7: 0,
+                                 8: 0,
+                                 9: 0,
+                                }
 
-        # Update (v_{t-1} + alpha * (v_t - v_{t-1}))
-        for state in self.states:
-            if self.state_occurence[state] > 0:
-                average_reward = self.state_reward[state]/self.state_occurence[state]
+            # In how many episodes does the state occur?
+            self.state_occurence = {1: 0,
+                                    2: 0,
+                                    3: 0,
+                                    4: 0,
+                                    5: 0,
+                                    6: 0,
+                                    7: 0,
+                                    8: 0,
+                                    9: 0,
+                                    }
 
-                # Distinction betweent positive and negative values
-                self.state_value[state] = self.state_value[state] + self.learning_rate * \
-                                          (average_reward - self.state_value[state])
+            # Create the state-value function (first as a dictionary, for rendering
+            # as a matrix)
+            self.state_value = {1: 0,
+                                2: 0,
+                                3: 0,
+                                4: 0,
+                                5: 0,
+                                6: 0,
+                                7: 0,
+                                8: 0,
+                                9: 0,
+                                }
 
-    def reset_state_occurence(self):
-        '''
-        Resets the state occurence of the first policy
-        '''
-        ...
+            # Save the visited states
+            self.state_history = defaultdict(list)
 
-    '''First-visit MC prediction, for estimating V'''
+        ### The following methods are only needed for the subclasses
 
+        def choose_action(self):
+            '''
+            Extends the choose_action method of the parent class
+            '''
+            super().choose_action(self)
 
-    class PolicyIterationMouse(Mouse):
-        ...
+            # Save the new state in the state history
+            self.state_history[self.episode].append(self.state)
 
-    class ValueIterationMouse(Mouse):
-        ...
+        ## Only for the Action Value iteration
+        # def update_q(self):
+        #     '''
+        #     Updates the action_value (Q-)function of the mouse.
+        #     '''
+        #     self.q.loc[self.last_state, self.action] = \
+        #         self.q.loc[self.last_state, self.action] + \
+        #         self.learning_rate * (self.last_reward - \
+        #         self.q.loc[self.last_state, self.action]) +\
+        #         sum(self.q.loc[self.state])/4
 
-    class MonteCarloMouse(Mouse):
-        ...
+        def update_state_values(self):
+            '''
+            Updates the values of the state_value function.
+            '''
+            # This code is specifically written for a Monte Carlo implementation
+            ## The combined list is not used, therefore commented out for now
+            # combined_list = []
+            # for values in self.state_history.values():
+            #     combined_list.extend(set(values))
 
-    class TemporalDifferenceMouse(Mouse):
+            # Update (v_{t-1} + alpha * (v_t - v_{t-1}))
+            for state in self.states:
+                if self.state_occurence[state] > 0:
+                    average_reward = self.state_reward[state]/self.state_occurence[state]
+
+                    # Distinction betweent positive and negative values
+                    self.state_value[state] = self.state_value[state] + self.learning_rate * \
+                                              (average_reward - self.state_value[state])
+
+        def reset_state_occurence(self):
+            '''
+            Resets the state occurence of the first policy
+            '''
+            ...
+
+        '''First-visit MC prediction, for estimating V'''
+
+        def increase_state_reward_occurence(self, reward):
+            '''
+            Increases the state_reward used to calculate the state_value.
+            '''
+            for state in self.states:
+                if state in self.state_history[self.episode]:
+                    self.state_reward[state] += reward
+                    self.state_occurence[state] += 1
+
+mouse = FirstVisitStateValueMonteCarloMouse()
+
+mouse.actions
+
+class TemporalDifferenceMouse(Mouse):
         ...

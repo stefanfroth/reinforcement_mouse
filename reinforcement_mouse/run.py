@@ -39,18 +39,17 @@ while True:
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-    mouse.choose_action()
-    mouse.assign_reward()
+    mouse.play_one_round()
     print(f'The mouse chooses action {mouse.action}')
     time.sleep(SLEEP)
 
     # If the number of episodes to train are over, calculate the new
     # state_values
-    if mouse.episode % EPISODES == 0 and mouse.state in [1, 9]:
-        mouse.update_state_values()
-        mouse.reward = 0
-        print(f"The mouse's state values are {mouse.state_value}")
-        time.sleep(3)
+    # if mouse.episode % EPISODES == 0 and mouse.state in [1, 9]:
+    #     mouse.update_state_values()
+    #     mouse.reward = 0
+    #     print(f"The mouse's state values are {mouse.state_value}")
+    #     time.sleep(3)
 
 
 cv2.destroyAllWindows()
