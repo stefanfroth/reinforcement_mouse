@@ -33,6 +33,7 @@ class Mouse:
         self.states = states
 
         # State in timesteps t and t-1
+        self.starting_position = starting_position
         self.state = starting_position
         self.last_state = starting_position
 
@@ -71,9 +72,10 @@ class Mouse:
                                 9: 2
                                 }
 
-        # Rewards in timesteps t and t-1
-        self.reward = 0
-        self.last_reward = 0
+        # Rewards in for timestep t, for the episode and for the whole history
+        self.reward_timestep = 0
+        self.reward_episode = 0
+        self.reward_total = 0
 
         # Policy: Choose an action given the state; initially random
         self.policy = pd.DataFrame(np.ones(shape=(9,4)) * 0.25,
@@ -107,82 +109,60 @@ class Mouse:
 
     def choose_action(self):
         '''
-        Determines the next state of the mouse.
+        Determines the action the mouse takes
+        '''
+        self.action = np.random.choice(self.actions, p=policy.iloc[self.state])
+
+
+    def transition_to_next_state(self):
+        '''
+        Transitions to the next state conditional on the transition function
+        and the chosen action
         '''
         self.last_state = self.state
-
-        # Implement exploration/exploitation
-        if self.exploration:
-            epsilon = np.random.randint(1, 100)/(100+self.episode)
-        else:
-            epsilon = 0.1
-
-        '''With probability epsilon, choose randomly
-           else according to the policy'''
-        if epsilon > 0.9 or self.episode < 4:
-            self.action = np.random.choice(self.actions,
-                                          p=self.policy.loc[self.state].values)
-        else:
-            # Here is immense potential for refactoring
-            best_action = []
-            value_best = -1000
-            for action in self.actions:
-                action_value = self.state_value\
-                               [self.transition[self.state][action]]
-                if action_value > value_best:
-                    best_action = [action]
-                    value_best = action_value
-                elif action_value == value_best:
-                    best_action.append(action)
-            print(f'The actions are {self.actions}')
-            print(f'The state_values are {[self.state_value[self.transition[self.state][action]] for action in self.actions]}')
-            print(f'The best possible actions are {best_action}')
-
-            # If the best_action is non-unique
-            self.action = np.random.choice(best_action)
-
-        # Save the new state
-        self.state = self.transition[self.last_state][self.action]
+        self.state = self.transition[self.state][self.action]
 
 
     def assign_reward(self):
         '''
         Assigns a reward to the mouse given its chosen action.
         '''
-        self.reward += self.reward_function[self.state]
-        self.last_reward = self.reward_function[self.state]
-        # if self.state == 1:
-        #     self.last_reward = 1
-        #     self.reward += 1
+        self.reward_timestep = self.reward_function[self.state] * \
+                               self.discount_factor**self.timestep
+        self.reward_episode += self.reward_timestep
+        self.reward_total += self.reward_timestep
 
-            # Increase the state_reward
-        #    self.increase_state_reward_occurence(self.reward)
+        # increase timestep
+        self.timestep += 1
 
-        # elif self.state == 9:
-        #     self.last_reward = 2
-        #     self.reward += 2
+    ## Perspectively should be moved to the grid
+    def transition_to_new_episode(self):
+        '''
+        After the mouse finds the cheese the episode is over and a new episode
+        starts
+        '''
+        # Move back to the starting_position
+        self.state = self.starting_position
+        self.last_state = self.starting_position
 
-            # Increase the state reward
-        #    self.increase_state_reward_occurence(self.reward)
+        # Increase the total reward and reset reward_episode and reward_timestep
+        self.reward_timestep = 0
+        self.reward_episode = 0
 
-        # else:
-        #     self.last_reward = -1
-        #     self.reward -= 1
+        # Set the number of episodes one up
+        self.episode += 1
 
-        # if self.state in [1, 9]:
-        #     self.increase_state_reward_occurence(self.reward)
+        # Reset timestep
+        self.timestep = 0
 
     def play_one_round(self):
         self.choose_action()
+        self.transition_to_next_state()
         self.assign_reward()
 
 
-class PolicyIterationMouse(Mouse):
-    ...
-
-class ValueIterationMouse(Mouse):
-    ...
-
+## First implement that it plays a couple of rounds in order to estimate the
+# state_values
 class FirstVisitStateValueMonteCarloMouse(Mouse):
         '''
         Implements the first visit monte carlo method of learning the state
@@ -196,10 +176,13 @@ class FirstVisitStateValueMonteCarloMouse(Mouse):
         discount_factor:   The discount factor of the game
         learning_rate:     Learning rate at which the value is updated
         '''
-        def __init__(self):
+        def __init__(self, nr_of_sample_draws):
             super().__init__(states=list(range(1, 10)), starting_position=5,
                          exploration=False, discount_factor=0.8,
                          learning_rate=0.5)
+
+            # Nr of samples that are drawn in order to estimate the state value function
+            self.nr_of_sample_draws = nr_of_sample_draws
 
             # Create helper function for the calculation of the state-values
             # It is called state reward
@@ -248,7 +231,27 @@ class FirstVisitStateValueMonteCarloMouse(Mouse):
             '''
             Extends the choose_action method of the parent class
             '''
-            super().choose_action(self)
+            # self.last_state = self.state
+
+            # Implement exploration/exploitation
+            if not self.exploration:
+                self.action = np.random.choice(self.actions, p=policy.loc[self.state])
+            else:
+                epsilon = np.random.randint(1, 100)/(100+self.episode)
+
+                '''With probability epsilon, choose randomly
+                   else according to the policy'''
+                   ## Make the episode variable
+                if epsilon > 0.9 or self.episode < 4:
+                    self.action = np.random.choice(self.actions)
+
+            print(f'The actions are {self.actions}')
+            print(f'The state_values are {self.state_value}')#[self.transition[self.state][action]] for action in self.actions]}')
+            # print(f'The best possible actions are {best_action}')
+
+
+        def transition_to_next_state(self):
+            super().transition_to_next_state()
 
             # Save the new state in the state history
             self.state_history[self.episode].append(self.state)
@@ -268,20 +271,38 @@ class FirstVisitStateValueMonteCarloMouse(Mouse):
             '''
             Updates the values of the state_value function.
             '''
-            # This code is specifically written for a Monte Carlo implementation
-            ## The combined list is not used, therefore commented out for now
-            # combined_list = []
-            # for values in self.state_history.values():
-            #     combined_list.extend(set(values))
-
             # Update (v_{t-1} + alpha * (v_t - v_{t-1}))
             for state in self.states:
                 if self.state_occurence[state] > 0:
                     average_reward = self.state_reward[state]/self.state_occurence[state]
 
+                    self.state_value[state] = average_reward
                     # Distinction betweent positive and negative values
-                    self.state_value[state] = self.state_value[state] + self.learning_rate * \
-                                              (average_reward - self.state_value[state])
+                    # self.state_value[state] = self.state_value[state] + self.learning_rate * \
+                    #                           (average_reward - self.state_value[state])
+
+        def update_policy(self):
+            '''
+            Update the policy to choose the optimal action
+            '''
+            best_actions = []
+            best_value = 0
+
+            for state in self.states:
+                for action in self.actions:
+                    value = self.state_value[self.transition[state][action]]
+                    if  value >= best_value:
+                        best_actions.append(action)
+                        best_value = value
+
+                self.policy[state] == [0, 0, 0, 0]
+                if len(best_actions) == 1:
+                    self.policy[state][best_actions[0]] == 1
+                else:
+                    for best_action in best_actions:
+                        self.policy[state][best_action] == 1/len(best_action)
+
+
 
         def reset_state_occurence(self):
             '''
@@ -291,18 +312,54 @@ class FirstVisitStateValueMonteCarloMouse(Mouse):
 
         '''First-visit MC prediction, for estimating V'''
 
-        def increase_state_reward_occurence(self, reward):
+        def increase_state_reward_occurence(self):
             '''
             Increases the state_reward used to calculate the state_value.
             '''
-            for state in self.states:
-                if state in self.state_history[self.episode]:
-                    self.state_reward[state] += reward
-                    self.state_occurence[state] += 1
+            for state in set(self.state_history[self.episode]):
+                self.state_reward[state] += self.reward_episode
+                self.state_occurence[state] += 1
 
-mouse = FirstVisitStateValueMonteCarloMouse()
+        def transition_to_new_episode(self):
+            '''
+            Extend parent classes method to update state values
+            '''
+            print(f'Transitioning to new episode {self.episode+1}')
+            self.increase_state_reward_occurence()
 
-mouse.actions
+            # Update the
+            if self.episode % self.nr_of_sample_draws == 0:
+                self.update_state_values()
+                # Get this running
+                #self.update_policy()
+                print(f'Episode: {self.episode}; Updating state values')
+
+            # Functionality of the class Mouse
+            super().transition_to_new_episode()
+            print('Breakpoint')
+
+        # def play_one_round(self):
+        #     '''
+        #     Extend the method play_one_round of the parent class
+        #     '''
+        #     ## If it stays like this get rid of this method again
+        #     super().play_one_round()
+
 
 class TemporalDifferenceMouse(Mouse):
-        ...
+    ...
+
+class PolicyIterationMouse(Mouse):
+    ...
+
+class ValueIterationMouse(Mouse):
+    ...
+
+
+
+actions = ['up', 'right', 'left', 'down']
+
+states=list(range(1, 10))
+policy = pd.DataFrame(np.ones(shape=(9,4)) * 0.25,
+                           columns=['up', 'right', 'left', 'down'],
+                           index=states)

@@ -1,17 +1,23 @@
 import cv2
 import time
-from mouse import Mouse
+from mouse import Mouse, FirstVisitStateValueMonteCarloMouse
 from grid import Grid
 
 ## Set global variables ##
 # Sleeping time
-SLEEP = 1
+SLEEP = 0.01
 EPISODES = 5
 
-mouse = Mouse()
+mouse = FirstVisitStateValueMonteCarloMouse(nr_of_sample_draws=100)
 grid = Grid(mouse)
 
 while True:
+
+    # Print the mouses rewards
+    print(f'''The mouses rewards are:\n
+              Timestep: {mouse.reward_timestep}\n
+              Episode:  {mouse.reward_episode}\n
+              Total: {mouse.reward_total}\n''')
 
     # Reset the mouse and increase the episode
     if mouse.state in [1, 9]:
@@ -22,10 +28,7 @@ while True:
             break
         time.sleep(SLEEP)
 
-        mouse.state = 5
-        mouse.last_state = 5
-        mouse.last_reward = 0
-        mouse.episode += 1
+        mouse.transition_to_new_episode()
 
 
     # Q-values
