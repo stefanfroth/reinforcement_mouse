@@ -127,9 +127,10 @@ class Mouse:
         '''
         Assigns a reward to the mouse given its chosen action.
         '''
-        self.reward_timestep = self.reward_function[self.state] * \
+        self.reward_timestep = self.reward_function[self.state]
+
+        self.reward_episode += self.reward_timestep * \
                                self.discount_factor**self.timestep
-        self.reward_episode += self.reward_timestep
         self.reward_total += self.reward_timestep
 
         # increase timestep
@@ -336,13 +337,10 @@ class TemporalDifferenceMouseStateValues(Mouse):
     '''
     ## The __init__ is exactly the same as for the FirstVisitStateValueMonteCarloMouse.
     ## Should be a StateVale Mouse
-    def __init__(self, nr_of_sample_draws):
+    def __init__(self):
         super().__init__(states=list(range(1, 10)), starting_position=5,
                      exploration=False, discount_factor=0.8,
                      learning_rate=0.5)
-
-        # Nr of samples that are drawn in order to estimate the state value function
-        self.nr_of_sample_draws = nr_of_sample_draws
 
         # Create helper function for the calculation of the state-values
         # It is called state reward
@@ -408,12 +406,58 @@ class TemporalDifferenceMouseStateValues(Mouse):
     # def transition_to_next_state(self):
 
 
-    def update_state_values(self):
+    def update_state_values(self, terminal=False):
         '''
         Update the state values
         '''
-        self.state_value
-        
+        if not terminal:
+            # The value of the last state
+            value_s_0 = self.state_value[self.last_state]
+
+            # The discounted value of the new state
+            discounted_value_s_1 = self.discount_factor * self.state_value[self.state]
+
+            # The update applied to the state value
+            update = self.learning_rate * \
+                     (self.reward_timestep + discounted_value_s_1 - value_s_0)
+
+            # The new state value
+            self.state_value[self.last_state] = value_s_0 + update
+
+        # Assign a value to the terminal state
+        else:
+            value_s_1 = self.state_value[self.state]
+            self.state_value[self.state] = value_s_1 + \
+                                           self.learning_rate * \
+                                           (self.reward_timestep - value_s_1)
+
+
+    # Not actually a method from Mouse but from FirstVisitStateValueMonteCarloMouse
+    # Again indicates the need of a intermediate State Value mouse (or even Mouse)
+    def update_policy(self):
+        '''
+        Update the policy to choose the optimal action
+        '''
+        for state in self.states:
+            best_actions = []
+            best_value = 0
+            for action in self.actions:
+                value = self.state_value[self.transition[state][action]]
+                if  value > best_value:
+                    best_actions = [action]
+                    best_value = value
+                elif value == best_value:
+                    best_actions.append(action)
+
+            self.policy.loc[state] = [1/len(best_actions) if x in best_actions else 0 for x in self.actions]
+
+
+    def play_one_round(self):
+        '''Extended method of mouse'''
+        super().play_one_round()
+        self.update_state_values()
+        self.update_policy()
+
 
 
 class PolicyIterationMouse(Mouse):

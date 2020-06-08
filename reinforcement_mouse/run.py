@@ -1,6 +1,6 @@
 import cv2
 import time
-from mouse import Mouse, FirstVisitStateValueMonteCarloMouse
+from mouse import Mouse, FirstVisitStateValueMonteCarloMouse, TemporalDifferenceMouseStateValues
 from grid import Grid
 
 ## Set global variables ##
@@ -8,7 +8,8 @@ from grid import Grid
 SLEEP = 1
 EPISODES = 5
 
-mouse = FirstVisitStateValueMonteCarloMouse(nr_of_sample_draws=5)
+# mouse = FirstVisitStateValueMonteCarloMouse(nr_of_sample_draws=5)
+mouse = TemporalDifferenceMouseStateValues()
 grid = Grid(mouse)
 
 while True:
@@ -28,6 +29,7 @@ while True:
             break
         time.sleep(SLEEP)
 
+        mouse.update_state_values(terminal=True)
         mouse.transition_to_new_episode()
 
 
