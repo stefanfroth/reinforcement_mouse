@@ -5,10 +5,10 @@ from grid import Grid
 
 ## Set global variables ##
 # Sleeping time
-SLEEP = 0.01
+SLEEP = 1
 EPISODES = 5
 
-mouse = FirstVisitStateValueMonteCarloMouse(nr_of_sample_draws=100)
+mouse = FirstVisitStateValueMonteCarloMouse(nr_of_sample_draws=5)
 grid = Grid(mouse)
 
 while True:
