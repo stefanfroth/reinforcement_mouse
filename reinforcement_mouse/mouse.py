@@ -97,15 +97,6 @@ class Mouse:
         # Learning Rate
         self.learning_rate = learning_rate
 
-        ### Cutoff: The rest of the __init__ function belongs to subclasses
-
-        # Create the action-value function
-        self.q = pd.DataFrame(np.zeros(shape=(9,4)),
-                              columns=['up', 'right', 'left', 'down'],
-                              index=self.states)
-
-
-
 
     def choose_action(self):
         '''
@@ -321,6 +312,8 @@ class FirstVisitStateValueMonteCarloMouse(Mouse):
             print('Breakpoint')
 
 
+## This Mouse is inherently flawed as using state values for temporal difference
+## learning is not possible?
 class TemporalDifferenceMouseStateValues(Mouse):
     '''
     Implements temporal difference learning for the state value function.
@@ -458,6 +451,105 @@ class TemporalDifferenceMouseStateValues(Mouse):
         self.update_state_values()
         self.update_policy()
 
+
+class Sarsa(Mouse):
+    '''Implementation of Sarsa solution'''
+
+    def __init__(self, states=list(range(1, 10)), starting_position=5,
+                 exploration=False, discount_factor=0.8,
+                 learning_rate=0.5):
+        '''
+        Constructor of Sarsa.
+
+        Additionally to the parents constructor I need action values and
+        a method to update action values.
+        '''
+        super().__init__(states, starting_position, exploration,
+                         discount_factor, learning_rate)
+
+        # Create the action-value function
+        self.q = pd.DataFrame(np.zeros(shape=(9,4)),
+                              columns=['up', 'right', 'left', 'down'],
+                              index=self.states)
+
+    def print_exploration(self):
+        '''Debugging'''
+        print(f'The value of exploration is {self.exploration}')
+
+    def choose_action(self):
+        '''
+        Extends the choose_action method of the parent class
+        '''
+        ## Given that this choose_action method is basically the same as for the
+        ## FirstVisitStateValueMonteCarloMouse this should be part of the Mouse
+        # Implement exploration/exploitation
+        if not self.exploration:
+            self.action = np.random.choice(self.actions, p=self.policy.loc[self.state])
+        else:
+            epsilon = np.random.randint(1, 100)/(100 + self.episode)
+            print(f'I am exploring if epsilon is > 0.5 and it is {epsilon}')
+
+            '''With probability epsilon, choose randomly
+               else according to the policy'''
+               ## Make the episode variable
+            if epsilon > 0.5:# or self.episode < 4:
+                self.action = np.random.choice(self.actions)
+            else:
+                self.action = np.random.choice(self.actions, p=self.policy.loc[self.state])
+
+        print(f'''The action_values are \n
+                {self.q}''')
+
+
+    def update_action_values(self, terminal=False):
+        '''
+        Update the action values
+        '''
+        # The action value of the last state and the action taken
+        value_s_0 = self.q.at[self.last_state, self.action]
+
+        # The discounted action values of the new state given the policy
+        prob = 0
+        value = 0
+        for action in self.actions:
+            prob = self.policy.loc[self.state, action]
+            value += prob*self.q.loc[self.state, action]
+
+        discounted_value_s_1 = self.discount_factor * value
+
+        # The update applied to the state value
+        update = self.learning_rate * \
+                 (self.reward_timestep + discounted_value_s_1 - value_s_0)
+
+        # The new state value
+        self.q.loc[self.last_state, self.action] = value_s_0 + update
+
+
+    # Can probably done a lot easier
+    def update_policy(self):
+        '''
+        Update the policy to choose the optimal action
+        '''
+        for state in self.states:
+            best_actions = []
+            best_value = 0
+            for action in self.actions:
+                value = self.q.loc[state, action]
+                if  value > best_value:
+                    best_actions = [action]
+                    best_value = value
+                elif value == best_value:
+                    best_actions.append(action)
+
+            self.policy.loc[state] = [1/len(best_actions) if x in best_actions else 0 for x in self.actions]
+
+
+    def play_one_round(self):
+        '''Extended method of mouse'''
+        super().play_one_round()
+        self.update_action_values()
+        self.update_policy()
+        self.print_exploration()
 
 
 class PolicyIterationMouse(Mouse):

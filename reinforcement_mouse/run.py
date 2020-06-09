@@ -1,15 +1,16 @@
 import cv2
 import time
-from mouse import Mouse, FirstVisitStateValueMonteCarloMouse, TemporalDifferenceMouseStateValues
+from mouse import Mouse, FirstVisitStateValueMonteCarloMouse, TemporalDifferenceMouseStateValues, Sarsa
 from grid import Grid
 
 ## Set global variables ##
 # Sleeping time
-SLEEP = 1
+SLEEP = 0.5
 EPISODES = 5
 
 # mouse = FirstVisitStateValueMonteCarloMouse(nr_of_sample_draws=5)
-mouse = TemporalDifferenceMouseStateValues()
+# mouse = TemporalDifferenceMouseStateValues()
+mouse = Sarsa(exploration=True)
 grid = Grid(mouse)
 
 while True:
@@ -29,7 +30,8 @@ while True:
             break
         time.sleep(SLEEP)
 
-        mouse.update_state_values(terminal=True)
+        # mouse.update_state_values(terminal=True)
+        mouse.update_action_values()
         mouse.transition_to_new_episode()
 
 
