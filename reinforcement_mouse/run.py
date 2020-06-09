@@ -1,6 +1,7 @@
 import cv2
 import time
-from mouse import Mouse, FirstVisitStateValueMonteCarloMouse, TemporalDifferenceMouseStateValues, Sarsa
+from mouse import Mouse, TemporalDifferenceMouseStateValues, Sarsa
+from firstvisitmontecarlo import FirstVisitStateValueMonteCarloMouse
 from grid import Grid
 
 ## Set global variables ##
