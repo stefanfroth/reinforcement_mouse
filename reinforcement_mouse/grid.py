@@ -29,9 +29,14 @@ class Grid:
         self.size = size
 
         # All possible states
+        # Make this flexible
         self.states = list(range(1, self.size+1))
 
+        # Include barriers
+
         # Mapping between actions and states
+        # Going forward it is actually a good idea to include the transition
+        # into the grid because the transition should be grid specific
         # self.transition = pd.DataFrame([
         #                              [7, 2, 4, 3],
         #                              [8, 3, 5, 1],
@@ -57,6 +62,7 @@ class Grid:
                           8: {'y': 500, 'x': 270},
                           9: {'y': 500, 'x': 500},
                          }
+                         
 
     def draw(self):
         '''
