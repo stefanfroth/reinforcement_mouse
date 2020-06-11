@@ -99,7 +99,7 @@ class Mouse:
         '''
         Determines the action the mouse takes
         '''
-        self.action = np.random.choice(self.actions, p=policy.iloc[self.state])
+        self.action = np.random.choice(self.actions, p=self.policy.iloc[self.state])
 
 
     def transition_to_next_state(self):

@@ -10,9 +10,9 @@ from grid import Grid
 SLEEP = 0.5
 EPISODES = 5
 
-# mouse = FirstVisitStateValueMonteCarloMouse(nr_of_sample_draws=5)
-# mouse = TemporalDifferenceMouseStateValues()
-mouse = Sarsa(exploration=False)
+# mouse = Mouse()
+# mouse = FirstVisitStateValueMonteCarloMouse(nr_of_sample_draws=EPISODES)
+# mouse = Sarsa(exploration=True)
 grid = Grid(mouse)
 
 while True:
@@ -28,9 +28,11 @@ while True:
         grid.draw()
 
         cv2.imshow('frame', grid.frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(0) & 0xFF == ord('q'):
             break
-        time.sleep(SLEEP)
+        # time.sleep(SLEEP)
+        if cv2.waitKey(0) == ord('a'):
+           continue
 
         # mouse.update_state_values(terminal=True)
         # mouse.update_action_values()
@@ -45,12 +47,14 @@ while True:
     grid.draw()
 
     cv2.imshow('frame', grid.frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+    # if cv2.waitKey(1) & 0xFF == ord('q'):
+    #     break
 
     mouse.play_one_round()
     print(f'The mouse chooses action {mouse.action}')
-    time.sleep(SLEEP)
+    # time.sleep(SLEEP)
+    if cv2.waitKey(0) == ord('a'):
+       continue
 
 
 cv2.destroyAllWindows()

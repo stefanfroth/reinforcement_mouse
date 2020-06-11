@@ -91,8 +91,10 @@ class FirstVisitStateValueMonteCarloMouse(Mouse):
                 if epsilon > 0.9 or self.episode < 4:
                     self.action = np.random.choice(self.actions)
 
-            print(f'The actions are {self.actions}')
-            print(f'The state_values are {self.state_value}')#[self.transition[self.state][action]] for action in self.actions]}')
+            printable_state_values = {key: round(value, 2)
+                                      for key, value
+                                      in self.state_value.items()}
+            print(f'The state_values are {printable_state_values}')#[self.transition[self.state][action]] for action in self.actions]}')
             # print(f'The best possible actions are {best_action}')
 
 
@@ -133,11 +135,11 @@ class FirstVisitStateValueMonteCarloMouse(Mouse):
                 self.policy.loc[state] = [1/len(best_actions) if x in best_actions else 0 for x in self.actions]
 
 
-        def reset_state_occurence(self):
-            '''
-            Resets the state occurence of the first policy
-            '''
-            ...
+        # def reset_state_occurence(self):
+        #     '''
+        #     Resets the state occurence of the first policy
+        #     '''
+        #     ...
 
 
         def increase_state_reward_occurence(self):
@@ -164,3 +166,22 @@ class FirstVisitStateValueMonteCarloMouse(Mouse):
             # Functionality of the class Mouse
             super().transition_to_new_episode()
             print('Breakpoint')
+
+
+state_value = {1: 0,
+                    2: 0,
+                    3: 0,
+                    4: 0,
+                    5: 0,
+                    6: 0,
+                    7: 0,
+                    8: 0,
+                    9: 0,
+                    }
+import numpy as np
+for key, value in state_value.items():
+    state_value[key] = round(np.random.normal(), 2)
+
+{key: round(value, 2) for key, value in state_value.items()}
+
+state_value
