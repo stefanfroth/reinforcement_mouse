@@ -2,7 +2,7 @@ import cv2
 import time
 from mouse import Mouse
 from firstvisitmontecarlo import FirstVisitStateValueMonteCarloMouse
-from temporaldifference import Sarsa
+from temporaldifference import Sarsa, QLearningMouse
 from grid import Grid
 
 ## Set global variables ##
@@ -12,7 +12,8 @@ EPISODES = 5
 
 # mouse = Mouse()
 # mouse = FirstVisitStateValueMonteCarloMouse(nr_of_sample_draws=EPISODES)
-# mouse = Sarsa(exploration=True)
+# mouse = Sarsa(exploration=False)
+mouse = QLearningMouse(exploration=False)
 grid = Grid(mouse)
 
 while True:

@@ -166,22 +166,3 @@ class FirstVisitStateValueMonteCarloMouse(Mouse):
             # Functionality of the class Mouse
             super().transition_to_new_episode()
             print('Breakpoint')
-
-
-state_value = {1: 0,
-                    2: 0,
-                    3: 0,
-                    4: 0,
-                    5: 0,
-                    6: 0,
-                    7: 0,
-                    8: 0,
-                    9: 0,
-                    }
-import numpy as np
-for key, value in state_value.items():
-    state_value[key] = round(np.random.normal(), 2)
-
-{key: round(value, 2) for key, value in state_value.items()}
-
-state_value
